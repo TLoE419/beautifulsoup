@@ -683,28 +683,75 @@ class SoupStrainer(ElementFilter):
 
 
 class SoupReplacer(SoupStrainer):
-    og_tag: str    # Original tag name
-    alt_tag: str   # Alternative tag name
+    """
+    Transformer functions:
+    - name_xformer: Function that takes a tag and returns a new name (str)
+    - attrs_xformer: Function that takes a tag and returns new attributes (dict)
+    - xformer: Function that takes a tag and modifies it with side effects (returns None)
+    """
+    og_tag: Optional[str]                            # Original tag name
+    alt_tag: Optional[str]                           # Alternative tag name
+    name_xformer: Optional[Callable[[Tag], str]]     # Name transformer function
+    attrs_xformer: Optional[Callable[[Tag], dict]]   # Attributes transformer function
+    xformer: Optional[Callable[[Tag], None]]         # General transformer function
 
-    def __init__(self, og_tag: str, alt_tag: str):
-        super().__init__(name=og_tag)
+    def __init__(
+        self,
+        og_tag: Optional[str] = None,
+        alt_tag: Optional[str] = None,
+        name_xformer: Optional[Callable[[Tag], str]] = None,
+        attrs_xformer: Optional[Callable[[Tag], dict]] = None,
+        xformer: Optional[Callable[[Tag], None]] = None
+    ):
+        """
+        Transformer mode:
+            SoupReplacer(name_xformer=lambda tag: "blockquote" if tag.name == "b" else tag.name)
+            SoupReplacer(attrs_xformer=lambda tag: {k: v for k, v in tag.attrs.items() if k != "class"})
+            SoupReplacer(xformer=lambda tag: tag.attrs.clear())
+        """
+        # Initialize parent SoupStrainer for matching logic
+        # If using transformers, match all tags (name=None means match all)
+        match_name = og_tag if (name_xformer is None and attrs_xformer is None and xformer is None) else None
+        super().__init__(name=match_name)
 
-        # Store both tag names for the replacement operation
+        # Store both tag names for simple replacement operation
         self.og_tag = og_tag
         self.alt_tag = alt_tag
 
+        # Store transformer functions
+        self.name_xformer = name_xformer
+        self.attrs_xformer = attrs_xformer
+        self.xformer = xformer
+
     def replace_tag(self, tag: Tag) -> None:
-        """Replace the tag name if it matches the original tag.
-
-        This method checks if the given tag matches the original tag name
-        (og_tag), and if so, replaces it with the alternative tag name (alt_tag).
-
-        :param tag: The tag to potentially replace
         """
-        # Check if this tag matches our original tag name
-        if self.matches_tag(tag):
-            # Replace the tag name
-            tag.name = self.alt_tag
+        This method applies transformations in the following order:
+        1. name_xformer (if provided) - transforms the tag name
+        2. attrs_xformer (if provided) - transforms the tag attributes
+        3. xformer (if provided) - applies general side-effect transformations
+        4. Simple replacement (if og_tag/alt_tag provided and tag matches)
+        """
+        # Apply name transformer
+        if self.name_xformer:
+            new_name = self.name_xformer(tag)
+            if new_name:
+                tag.name = new_name
+
+        # Apply attributes transformer
+        if self.attrs_xformer:
+            new_attrs = self.attrs_xformer(tag)
+            if new_attrs is not None:
+                tag.attrs = new_attrs
+
+        # Apply general transformer (side effects)
+        if self.xformer:
+            self.xformer(tag)
+
+        # Fall back to simple replacement if no transformers and tag matches
+        if (self.name_xformer is None and self.attrs_xformer is None and
+            self.xformer is None and self.og_tag and self.alt_tag):
+            if self.matches_tag(tag):
+                tag.name = self.alt_tag
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} og_tag={self.og_tag} alt_tag={self.alt_tag}>"

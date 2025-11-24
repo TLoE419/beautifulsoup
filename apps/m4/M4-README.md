@@ -71,15 +71,3 @@ Verifies correctness and generator pattern.
 ```bash
 # Run all iteration tests
 python -m pytest bs4/tests/test_soup.py::TestBeautifulSoupIteration -v
-
-### Test Results
-```
-============================= test session starts ==============================
-bs4/tests/test_soup.py::TestBeautifulSoupIteration::test_iterate_simple_document PASSED [ 20%]
-bs4/tests/test_soup.py::TestBeautifulSoupIteration::test_iterate_nested_structure PASSED [ 40%]
-bs4/tests/test_soup.py::TestBeautifulSoupIteration::test_iterate_mixed_node_types PASSED [ 60%]
-bs4/tests/test_soup.py::TestBeautifulSoupIteration::test_iterate_empty_document PASSED [ 80%]
-bs4/tests/test_soup.py::TestBeautifulSoupIteration::test_iteration_count_matches_descendants PASSED [100%]
-
-============================== 5 passed in 0.06s ==============================
-```
