@@ -520,6 +520,20 @@ class BeautifulSoup(Tag):
         clone.original_encoding = self.original_encoding
         return clone
 
+    def __iter__(self) -> Iterator[PageElement]:
+        """Iterate over all nodes in the document tree via depth-first traversal.
+
+        This overrides Tag.__iter__ to traverse the entire tree instead of just
+        direct children. Nodes are yielded using a generator pattern without
+        building an intermediate list.
+        """
+        def traverse(node: Tag) -> Iterator[PageElement]:
+            for child in node.contents:
+                yield child
+                if isinstance(child, Tag):
+                    yield from traverse(child)
+        return traverse(self)
+
     def __getstate__(self) -> Dict[str, Any]:
         # Frequently a tree builder can't be pickled.
         d = dict(self.__dict__)

@@ -600,3 +600,108 @@ class TestEncodingConversion(SoupTest):
         # The internal data structures can be encoded as UTF-8.
         soup_from_unicode = self.soup(self.unicode_data)
         assert soup_from_unicode.encode("utf-8") == self.utf8_data
+
+
+class TestBeautifulSoupIteration(SoupTest):
+
+    def test_iterate_simple_document(self):
+        markup = "<p>Hello</p>"
+        soup = self.soup(markup)
+
+        iterator = iter(soup)
+
+        node1 = next(iterator)
+        assert isinstance(node1, Tag)
+        assert node1.name == "p"
+
+        node2 = next(iterator)
+        assert isinstance(node2, NavigableString)
+        assert str(node2) == "Hello"
+
+        with pytest.raises(StopIteration):
+            next(iterator)
+
+    def test_iterate_nested_structure(self):
+        markup = "<div><p>A<b>B</b>C</p><span>D</span></div>"
+        soup = self.soup(markup)
+
+        iterator = iter(soup)
+
+        assert next(iterator).name == "div"
+        assert next(iterator).name == "p"
+        assert str(next(iterator)) == "A"
+        assert next(iterator).name == "b"
+        assert str(next(iterator)) == "B"
+        assert str(next(iterator)) == "C"
+        assert next(iterator).name == "span"
+        assert str(next(iterator)) == "D"
+
+        with pytest.raises(StopIteration):
+            next(iterator)
+
+    def test_iterate_mixed_node_types(self):
+        markup = "<!-- comment --><p>Text</p><!-- another -->"
+        soup = self.soup(markup)
+
+        iterator = iter(soup)
+
+        node1 = next(iterator)
+        assert isinstance(node1, Comment)
+        assert str(node1) == " comment "
+
+        node2 = next(iterator)
+        assert isinstance(node2, Tag)
+        assert node2.name == "p"
+
+        node3 = next(iterator)
+        assert isinstance(node3, NavigableString)
+        assert str(node3) == "Text"
+
+        node4 = next(iterator)
+        assert isinstance(node4, Comment)
+        assert str(node4) == " another "
+
+        with pytest.raises(StopIteration):
+            next(iterator)
+
+    def test_iterate_empty_document(self):
+
+        soup = self.soup("")
+        iterator = iter(soup)
+        with pytest.raises(StopIteration):
+            next(iterator)
+
+        soup = self.soup("Just text")
+        iterator = iter(soup)
+
+        node = next(iterator)
+        assert isinstance(node, NavigableString)
+        assert str(node) == "Just text"
+
+        with pytest.raises(StopIteration):
+            next(iterator)
+
+    def test_iteration_count_matches_descendants(self):
+        markup = """
+        <html>
+            <head><title>Test</title></head>
+            <body>
+                <h1>Title</h1>
+                <p>Paragraph with <b>bold</b> text.</p>
+                <ul>
+                    <li>Item 1</li>
+                    <li>Item 2</li>
+                </ul>
+            </body>
+        </html>
+        """
+        soup = self.soup(markup)
+        iter_count = sum(1 for _ in soup)
+
+        desc_count = sum(1 for _ in soup.descendants)
+
+        assert iter_count == desc_count
+
+
+        iter_obj = iter(soup)
+        assert hasattr(iter_obj, '__next__')
